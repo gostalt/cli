@@ -1,6 +1,6 @@
 package main
 
-import "gostalt.com/gostalt/cmd"
+import "github.com/gostalt/cli/cmd"
 
 func main() {
 	cmd.Execute()

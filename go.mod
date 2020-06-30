@@ -1,4 +1,4 @@
-module gostalt.com/gostalt
+module github.com/gostalt/cli
 
 go 1.13
 
