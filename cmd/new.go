@@ -28,7 +28,7 @@ func hasGitInstalled() bool {
 
 func cloneGitRepoToDir(dir string) {
 	fmt.Printf("⬇️  Cloning Gostalt to `%s` ... ", dir)
-	_, err := exec.Command("git", "clone", "git@github.com:gostalt/gostalt.git", dir).Output()
+	_, err := exec.Command("git", "clone", "https://github.com/gostalt/gostalt.git", dir).Output()
 	code, _ := err.(*exec.ExitError)
 
 	if code != nil {
