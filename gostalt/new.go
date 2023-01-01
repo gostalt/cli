@@ -1,108 +1,106 @@
 package main
 
 import (
+	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 
 	"github.com/spf13/cobra"
 )
 
+var (
+	noGitErr     = errors.New("a `git` executable was not found in $PATH")
+	dirExistsErr = errors.New("cannot create this directory because it already exists")
+	copyEnvErr   = errors.New("unable to create a .env file automatically")
+	buildErr     = errors.New("unable to build an app binary")
+	unknownErr   = errors.New("something went wrong")
+)
+
 var new = &cobra.Command{
-	Use:     newCmd,
-	Short:   newDescr,
-	Example: newExample,
+	Use:     "new",
+	Short:   "Create a new Gostalt application",
+	Example: "gostalt new app_name",
 	Args:    cobra.ExactArgs(1),
-	Run:     newFunc,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := checkGit(); err != nil {
+			return err
+		}
+
+		dir := args[0]
+
+		if err := clone(dir); err != nil {
+			return err
+		}
+
+		if err := copyEnv(dir); err != nil {
+			return err
+		}
+
+		if err := build(dir); err != nil {
+			return err
+		}
+
+		if err := printIntro(dir); err != nil {
+			return err
+		}
+
+		return nil
+	},
 }
 
-func hasGitInstalled() bool {
-	// TODO: Possibly look at downloading the repo as a fallback.
+// checkGit determines whether a git binary exists in the current system's $PATH.
+// If it doesn't, installation can't proceed as git is needed to clone the repo.
+//
+// @see https://github.com/gostalt/cli/issues/1
+func checkGit() error {
 	_, err := exec.Command("git", "--version").Output()
 	if err != nil {
-		return false
+		return noGitErr
 	}
 
-	return true
+	return nil
 }
 
-func cloneGitRepoToDir(dir string) {
-	fmt.Printf("⬇️  Cloning Gostalt to `%s` ... ", dir)
-	_, err := exec.Command("git", "clone", "https://github.com/gostalt/gostalt.git", dir).Output()
-	code, _ := err.(*exec.ExitError)
-
-	if code != nil {
-		fmt.Println("❌")
+func clone(dir string) error {
+	fmt.Printf("⬇️  Cloning Gostalt to `%s` ... \n", dir)
+	if _, err := exec.Command("git", "clone", "https://github.com/gostalt/gostalt.git", dir).Output(); err != nil {
+		code, _ := err.(*exec.ExitError)
 		switch code.ExitCode() {
 		case 128:
-			fmt.Println("    - " + dirExistsErr)
+			return dirExistsErr
+		default:
+			return unknownErr
 		}
-		os.Exit(1)
 	}
-
-	fmt.Println("✅")
 
 	exec.Command("rm", "-rf", dir+"/.git").Output()
+	return nil
 }
 
-func copyEnvFile(dir string) {
-	fmt.Printf("⚙️  Copying %s/.env.example file to %s/.env ... ", dir, dir)
-	_, err := exec.Command("cp", dir+"/.env.example", dir+"/.env").Output()
-	if err != nil {
-		fmt.Println("❌")
-		fmt.Println("    - Gostalt was unable to create a .env file automatically")
-		fmt.Printf("    - To fix this, copy the .env.example file inside the %s directory\n", dir)
-		return
+func copyEnv(dir string) error {
+	fmt.Printf("⚙️  Copying %s/.env.example file to %s/.env ... \n", dir, dir)
+	if _, err := exec.Command("cp", dir+"/.env.example", dir+"/.env").Output(); err != nil {
+		return copyEnvErr
 	}
 
-	fmt.Println("✅")
+	return nil
 }
 
-func buildInitialBinary(dir string) {
-	fmt.Print("📦  Building app binary ... ")
+func build(dir string) error {
+	fmt.Println("📦  Building app binary ... ")
 	cmdd := exec.Command("go", "build")
 	cmdd.Dir = dir
-	_, err := cmdd.Output()
-	if err != nil {
-		fmt.Println("❌")
-		fmt.Println("    - Gostalt was unable to build an app binary")
-		fmt.Printf("    - To fix this, run `go build` from the %s directory\n", dir)
-		return
+	if _, err := cmdd.Output(); err != nil {
+		return buildErr
 	}
 
-	fmt.Println("✅")
+	return nil
 }
 
-func printGetStarted(dir string) {
+func printIntro(dir string) error {
 	fmt.Println("🚀 To get started:")
 	fmt.Println("    cd " + dir)
 	fmt.Println("    ./gostalt serve")
+
+	return nil
 }
-
-func newFunc(cmd *cobra.Command, args []string) {
-	dir := args[0]
-	if !hasGitInstalled() {
-		fmt.Println("⚡️ " + noGitErr)
-		os.Exit(1)
-	}
-
-	cloneGitRepoToDir(dir)
-
-	copyEnvFile(dir)
-
-	buildInitialBinary(dir)
-
-	printGetStarted(dir)
-}
-
-const (
-	noGitErr     string = "A `git` executable was not found in your $PATH. Ensure git is installed on your system."
-	dirExistsErr string = "Gostalt cannot create this directory because it already exists."
-	unknownErr   string = "Unable to create a new application. An unknown error occurred."
-)
-
-const (
-	newCmd     = "new"
-	newDescr   = "Create a new Gostalt application"
-	newExample = "gostalt new app_name"
-)

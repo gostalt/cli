@@ -9,14 +9,13 @@ import (
 
 var root = &cobra.Command{
 	Use:   "gostalt",
-	Short: "Run commands for the Gostalt framework.",
+	Short: "Gostalt is a really nice Go Framework",
 }
 
 func init() {
 	root.AddCommand(new)
 }
 
-// Execute is the entry point to the CLI app.
 func Execute() {
 	if err := root.Execute(); err != nil {
 		fmt.Println(err)
