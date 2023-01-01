@@ -1,4 +1,4 @@
-module github.com/gostalt/artisan
+module github.com/gostalt/cli
 
 go 1.19
 
